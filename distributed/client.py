@@ -1,6 +1,7 @@
 from __future__ import print_function, division, absolute_import
 
 import atexit
+import inspect
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, CancelledError
 from concurrent.futures._base import DoneAndNotDoneFutures
@@ -96,7 +97,8 @@ from .utils import (
 from .versions import get_versions
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('distributed.client')
+logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s] [%(process)s/%(threadName)s] [%(levelname)s] [%(name)s] %(message)s')
 
 _global_clients = weakref.WeakValueDictionary()
 _global_client_index = [0]
@@ -604,6 +606,8 @@ class Client(Node):
         direct_to_workers=None,
         **kwargs
     ):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client.__init__ called from %s" % caller_name)
         if timeout == no_default:
             timeout = dask.config.get("distributed.comm.timeouts.connect")
         if timeout is not None:
@@ -658,7 +662,7 @@ class Client(Node):
         if address is None:
             address = dask.config.get("scheduler-address", None)
             if address:
-                logger.info("Config value `scheduler-address` found: %s", address)
+                logging.info("Config value `scheduler-address` found: %s", address)
 
         if isinstance(address, (rpc, PooledRPCCall)):
             self.scheduler = address
@@ -729,6 +733,8 @@ class Client(Node):
     @classmethod
     def current(cls):
         """ Return global client if one exists, otherwise raise ValueError """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client.current called from %s" % caller_name)
         return default_client()
 
     @property
@@ -749,6 +755,8 @@ class Client(Node):
         return self._asynchronous and self.loop is IOLoop.current()
 
     def sync(self, func, *args, **kwargs):
+        caller_name = inspect.stack()[1][3]
+        logger.info("Client.sync called from %s" % caller_name)
         asynchronous = kwargs.pop("asynchronous", None)
         if (
             asynchronous
@@ -855,6 +863,8 @@ class Client(Node):
 
     def start(self, **kwargs):
         """ Start scheduler running in separate thread """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client.start called from %s" % caller_name)
         if self.status != "newly-created":
             return
 
@@ -880,6 +890,8 @@ class Client(Node):
             return _().__await__()
 
     def _send_to_scheduler_safe(self, msg):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._send_to_scheduler_safe called from %s" % caller_name)
         if self.status in ("running", "closing"):
             try:
                 self.scheduler_comm.send(msg)
@@ -890,6 +902,8 @@ class Client(Node):
             self._pending_msg_buffer.append(msg)
 
     def _send_to_scheduler(self, msg):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._send_to_scheduler called from %s" % caller_name)
         if self.status in ("running", "closing", "connecting", "newly-created"):
             self.loop.add_callback(self._send_to_scheduler_safe, msg)
         else:
@@ -900,6 +914,8 @@ class Client(Node):
 
     @gen.coroutine
     def _start(self, timeout=no_default, **kwargs):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._start called from %s" % caller_name)
         if timeout == no_default:
             timeout = self._timeout
         if timeout is not None:
@@ -913,7 +929,7 @@ class Client(Node):
             except AttributeError:  # Some clusters don't have this method
                 pass
             except Exception:
-                logger.info(
+                logging.info(
                     "Tried to start cluster and received an error. " "Proceeding.",
                     exc_info=True,
                 )
@@ -974,6 +990,8 @@ class Client(Node):
 
     @gen.coroutine
     def _reconnect(self):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._reconnect called from %s" % caller_name)
         with log_errors():
             assert self.scheduler_comm.comm.closed()
 
@@ -1004,6 +1022,8 @@ class Client(Node):
 
     @gen.coroutine
     def _ensure_connected(self, timeout=None):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._ensure_connected called from %s" % caller_name)
         if (
             self.scheduler_comm
             and not self.scheduler_comm.closed()
@@ -1054,6 +1074,8 @@ class Client(Node):
 
     @gen.coroutine
     def _update_scheduler_info(self):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._update_scheduler_info called from %s" % caller_name)
         if self.status not in ("running", "connecting"):
             return
         try:
@@ -1121,6 +1143,8 @@ class Client(Node):
     @gen.coroutine
     def _handle_report(self):
         """ Listen to scheduler """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._handle_report called from %s" % caller_name)
         with log_errors():
             try:
                 while True:
@@ -1130,8 +1154,8 @@ class Client(Node):
                         msgs = yield self.scheduler_comm.comm.read()
                     except CommClosedError:
                         if self.status == "running":
-                            logger.info("Client report stream closed to scheduler")
-                            logger.info("Reconnecting...")
+                            logging.info("Client report stream closed to scheduler")
+                            logging.info("Reconnecting...")
                             self.status = "connecting"
                             yield self._reconnect()
                             continue
@@ -1198,7 +1222,7 @@ class Client(Node):
             state.set_error(exception, traceback)
 
     def _handle_restart(self):
-        logger.info("Receive restart signal from scheduler")
+        logging.info("Receive restart signal from scheduler")
         for state in self.futures.values():
             state.cancel()
         self.futures.clear()
@@ -1212,6 +1236,8 @@ class Client(Node):
     @gen.coroutine
     def _close(self, fast=False):
         """ Send close signal and wait until scheduler completes """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._close called from %s" % caller_name)
         self.status = "closing"
 
         for pc in self._periodic_callbacks.values():
@@ -1293,6 +1319,8 @@ class Client(Node):
         --------
         Client.restart
         """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client.close called from %s" % caller_name)
         if timeout == no_default:
             timeout = self._timeout * 2
         # XXX handling of self.status here is not thread-safe
@@ -1391,6 +1419,8 @@ class Client(Node):
         --------
         Client.map: Submit on many arguments at once
         """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client.submit called from %s" % caller_name)
         if not callable(func):
             raise TypeError("First input to submit must be a callable function")
 
@@ -1495,6 +1525,8 @@ class Client(Node):
         --------
         Client.submit: Submit a single function
         """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client.map called from %s" % caller_name)
         if not callable(func):
             raise TypeError("First input to map must be a callable function")
 
@@ -1607,6 +1639,8 @@ class Client(Node):
 
     @gen.coroutine
     def _gather(self, futures, errors="raise", direct=None, local_worker=None):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._gather called from %s" % caller_name)
         unpacked, future_set = unpack_remotedata(futures, byte_keys=True)
         keys = [tokey(future.key) for future in future_set]
         bad_data = dict()
@@ -1779,6 +1813,8 @@ class Client(Node):
         --------
         Client.scatter: Send data out to cluster
         """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client.gather called from %s" % caller_name)
         if isqueue(futures):
             raise TypeError(
                 "Dask no longer supports gathering over Iterators and Queues. "
@@ -1812,6 +1848,8 @@ class Client(Node):
         timeout=no_default,
         hash=True,
     ):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._scatter called from %s" % caller_name)
         if timeout == no_default:
             timeout = self._timeout
         if isinstance(workers, six.string_types + (Number,)):
@@ -1984,6 +2022,8 @@ class Client(Node):
         --------
         Client.gather: Gather data back to local process
         """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client.scatter called from %s" % caller_name)
         if timeout == no_default:
             timeout = self._timeout
         if isqueue(data) or isinstance(data, Iterator):
@@ -2306,6 +2346,8 @@ class Client(Node):
 
         >>> c.run(print_state, wait=False)  # doctest: +SKIP
         """
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client.run called from %s" % caller_name)
         return self.sync(self._run, function, *args, **kwargs)
 
     def run_coroutine(self, function, *args, **kwargs):
@@ -2350,6 +2392,8 @@ class Client(Node):
         fifo_timeout=0,
         actors=None,
     ):
+        caller_name = inspect.stack()[1][3]
+        logging.info("Client._graph_to_futures called from %s" % caller_name)
         with self._refcount_lock:
             if resources:
                 resources = self._expand_resources(
@@ -2420,8 +2464,7 @@ class Client(Node):
             if isinstance(retries, Number) and retries > 0:
                 retries = {k: retries for k in dsk3}
 
-            self._send_to_scheduler(
-                {
+            request = {
                     "op": "update-graph",
                     "tasks": valmap(dumps_task, dsk3),
                     "dependencies": dependencies,
@@ -2436,7 +2479,7 @@ class Client(Node):
                     "fifo_timeout": fifo_timeout,
                     "actors": actors,
                 }
-            )
+            self._send_to_scheduler(request)
             return futures
 
     def get(

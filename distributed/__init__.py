@@ -1,5 +1,8 @@
 from __future__ import print_function, division, absolute_import
 
+import subprocess
+import logging
+
 from . import config
 from dask.config import config
 from .actor import Actor, ActorFuture
@@ -36,4 +39,8 @@ from ._version import get_versions
 versions = get_versions()
 __version__ = versions["version"]
 __git_revision__ = versions["full-revisionid"]
+
+logging.info("Distributed %s imported" % __version__)
+logging.info("Git revision: %s" % __git_revision__)
+
 del get_versions, versions

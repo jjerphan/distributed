@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 
+import inspect
 from collections import defaultdict, deque
 from concurrent.futures import CancelledError
 from functools import partial
@@ -44,8 +45,6 @@ class RPCClosed(IOError):
     pass
 
 
-logger = logging.getLogger(__name__)
-
 
 def get_total_physical_memory():
     try:
@@ -70,6 +69,9 @@ tick_maximum_delay = parse_timedelta(
 )
 
 LOG_PDB = dask.config.get("distributed.admin.pdb-on-err")
+
+logger = logging.getLogger('distributed.core')
+logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s] [%(process)s/%(threadName)s] [%(levelname)s] [%(name)s] %(message)s')
 
 
 class Server(object):
@@ -404,7 +406,7 @@ class Server(object):
                     if serializers is not None and has_keyword(handler, "serializers"):
                         msg["serializers"] = serializers  # add back in
 
-                    logger.debug("Calling into handler %s", handler.__name__)
+                    # logger.info("Calling into handler %s", handler.__name__)
                     try:
                         result = handler(comm, **msg)
                         if type(result) is gen.Future:
@@ -448,18 +450,26 @@ class Server(object):
     @gen.coroutine
     def handle_stream(self, comm, extra=None, every_cycle=[]):
         extra = extra or {}
-        logger.info("Starting established connection")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Server.handle_long_running called from %s" % caller_name)
+        logging.info("Server.handle_long_running arguments")
+        for k, v in locals().items():
+            logging.info("%s ; id: %s ; type: %s ; value: %s" % (k, id(v), type(v), v))
 
+        logging.info("Server.handle_long_running: Starting established connection")
         io_error = None
         closed = False
         try:
             while not closed:
+                logging.info("Server.handle_long_running: still not closed")
                 msgs = yield comm.read()
                 if not isinstance(msgs, (tuple, list)):
                     msgs = (msgs,)
 
                 if not comm.closed():
+                    logging.info("Server.handle_long_running: got %s messages" % len(msgs))
                     for msg in msgs:
+                        logging.info("Server.handle_long_running: message: %s" % msg)
                         if msg == "OK":  # from close
                             break
                         op = msg.pop("op")
@@ -468,24 +478,29 @@ class Server(object):
                                 closed = True
                                 break
                             handler = self.stream_handlers[op]
+                            logging.info("Server.handle_long_running: Using handler %s" % handler)
                             handler(**merge(extra, msg))
                         else:
-                            logger.error("odd message %s", msg)
+                            logging.error("odd message %s", msg)
                 for func in every_cycle:
+                    logging.info("Server.handle_long_running: func: %s" % func)
                     func()
 
         except (CommClosedError, EnvironmentError) as e:
             io_error = e
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
                 pdb.set_trace()
             raise
         finally:
+            logging.info("Server.handle_long_running: Closing comm")
             yield comm.close()
             assert comm.closed()
+            logging.info("Server.handle_long_running: Comm closed")
+            logging.info("Server.handle_long_running: Done with starting established connection")
 
     @gen.coroutine
     def close(self):
@@ -701,7 +716,7 @@ class rpc(object):
             self.status = "closed"
             still_open = [comm for comm in self.comms if not comm.closed()]
             if still_open:
-                logger.warning(
+                logging.warning(
                     "rpc object %s deleted with %d open comms", self, len(still_open)
                 )
                 for comm in still_open:
@@ -896,7 +911,7 @@ class ConnectionPool(object):
         """
         Collect open but unused communications, to allow opening other ones.
         """
-        logger.info(
+        logging.info(
             "Collecting unused comms.  open: %d, active: %d", self.open, self.active
         )
         for addr, comms in self.available.items():
@@ -910,7 +925,7 @@ class ConnectionPool(object):
         """
         Remove all Comms to a given address.
         """
-        logger.info("Removing comms to %s", addr)
+        logging.info("Removing comms to %s", addr)
         if addr in self.available:
             comms = self.available.pop(addr)
             for comm in comms:
