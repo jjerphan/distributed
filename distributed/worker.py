@@ -25,6 +25,7 @@ from tornado.gen import Return
 from tornado import gen
 from tornado.ioloop import IOLoop
 from tornado.locks import Event
+import logging
 
 from . import profile, comm
 from .batched import BatchedSend
@@ -298,6 +299,7 @@ class Worker(ServerNode):
         low_level_profiler=dask.config.get("distributed.worker.profile.low-level"),
         **kwargs
     ):
+        logging.info("Worker.__init__ called")
         self.tasks = dict()
         self.task_state = dict()
         self.dep_state = dict()
@@ -603,6 +605,7 @@ class Worker(ServerNode):
     ##################
 
     def __repr__(self):
+        logging.info("Worker.__repr__ called")
         return (
             "<%s: %s, %s, stored: %d, running: %d/%d, ready: %d, comm: %d, waiting: %d>"
             % (
@@ -619,6 +622,7 @@ class Worker(ServerNode):
         )
 
     def _setup_logging(self):
+        logging.info("Worker._setup_logging called")
         self._deque_handler = DequeHandler(
             n=dask.config.get("distributed.admin.log-length")
         )
@@ -631,6 +635,7 @@ class Worker(ServerNode):
     @property
     def worker_address(self):
         """ For API compatibility with Nanny """
+        logging.info("Worker.worker_address called")
         return self.address
 
     def get_metrics(self):
@@ -659,6 +664,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def _register_with_scheduler(self):
+        logging.info("Worker._register_with_scheduler called")
         self.periodic_callbacks["heartbeat"].stop()
         start = time()
         if self.contact_address is None:
@@ -766,6 +772,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def handle_scheduler(self, comm):
+        logging.info("Worker.handle_scheduler called")
         try:
             yield self.handle_stream(
                 comm, every_cycle=[self.ensure_communicating, self.ensure_computing]
@@ -781,6 +788,7 @@ class Worker(ServerNode):
                 yield self.close(report=False)
 
     def start_ipython(self, comm):
+        logging.info("Worker.start_ipython called")
         """Start an IPython kernel
 
         Returns Jupyter connection info dictionary.
@@ -795,6 +803,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def upload_file(self, comm, filename=None, data=None, load=True):
+        logging.info("Worker.upload_file called")
         out_filename = os.path.join(self.local_dir, filename)
 
         def func(data):
@@ -824,6 +833,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def gather(self, comm=None, who_has=None):
+        logging.info("Worker.gather called")
         who_has = {
             k: [coerce_to_address(addr) for addr in v]
             for k, v in who_has.items()
@@ -845,6 +855,7 @@ class Worker(ServerNode):
             raise Return({"status": "OK"})
 
     def get_logs(self, comm=None, n=None):
+        logging.info("Worker.get_logs called")
         deque_handler = self._deque_handler
         if n is None:
             L = list(deque_handler.deque)
@@ -887,6 +898,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def _start(self, addr_or_port=0):
+        logging.info("Worker._start called")
         assert self.status is None
 
         enable_gc_diagnosis()
@@ -959,6 +971,7 @@ class Worker(ServerNode):
         return self._start().__await__()
 
     def start(self, port=0):
+        logging.info("Worker.start called")
         self.loop.add_callback(self._start, port)
 
     def _close(self, *args, **kwargs):
@@ -967,6 +980,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def close(self, report=True, timeout=10, nanny=True, executor_wait=True):
+        logging.info("Worker.close called")
         with log_errors():
             if self.status in ("closed", "closing"):
                 return
@@ -1051,6 +1065,7 @@ class Worker(ServerNode):
     ################
 
     def send_to_worker(self, address, msg):
+        logging.info("Worker.send_to_worker called")
         if address not in self.stream_comms:
             bcomm = BatchedSend(interval="1ms", loop=self.loop)
             self.stream_comms[address] = bcomm
@@ -1073,6 +1088,7 @@ class Worker(ServerNode):
     def get_data(
         self, comm, keys=None, who=None, serializers=None, max_connections=None
     ):
+        logging.info("Worker.get_data called")
         start = time()
 
         if max_connections is None:
@@ -1150,6 +1166,7 @@ class Worker(ServerNode):
     ###################
 
     def update_data(self, comm=None, data=None, report=True, serializers=None):
+        logging.info("Worker.update_data called")
         for key, value in data.items():
             if key in self.task_state:
                 self.transition(key, "memory", value=value)
@@ -1173,6 +1190,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def delete_data(self, comm=None, keys=None, report=True):
+        logging.info("Worker.delete_data called")
         if keys:
             for key in list(keys):
                 self.log.append((key, "delete"))
@@ -1193,6 +1211,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def set_resources(self, **resources):
+        logging.info("Worker.set_resources called")
         for r, quantity in resources.items():
             if r in self.total_resources:
                 self.available_resources[r] += quantity - self.total_resources[r]
@@ -1223,6 +1242,7 @@ class Worker(ServerNode):
         actor=False,
         **kwargs2
     ):
+        logging.info("Worker.add_task called")
         try:
             if key in self.tasks:
                 state = self.task_state[key]
@@ -1331,6 +1351,7 @@ class Worker(ServerNode):
             raise
 
     def transition_dep(self, dep, finish, **kwargs):
+        logging.info("Worker.transition_dep called")
         try:
             start = self.dep_state[dep]
         except KeyError:
@@ -1789,6 +1810,7 @@ class Worker(ServerNode):
         self.log.append((key, "put-in-memory"))
 
     def select_keys_for_gather(self, worker, dep):
+        logging.info("Worker.select_keys_for_gather called")
         deps = {dep}
 
         total_bytes = self.nbytes[dep]
@@ -1807,6 +1829,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def gather_dep(self, worker, dep, deps, total_nbytes, cause=None):
+        logging.info("Worker.gather_dep called")
         if self.status != "running":
             return
         with log_errors():
@@ -1934,6 +1957,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def handle_missing_dep(self, *deps, **kwargs):
+        logging.info("Worker.handle_missing_dep called")
         original_deps = list(deps)
         self.log.append(("handle-missing", deps))
         try:
@@ -1990,6 +2014,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def query_who_has(self, *deps):
+        logging.info("Worker.query_who_has called")
         with log_errors():
             response = yield self.scheduler.who_has(keys=deps)
             self.update_who_has(response)
@@ -2175,6 +2200,7 @@ class Worker(ServerNode):
         callbacks to ensure things run smoothly.  This can get tricky, so we
         pull it off into an separate method.
         """
+        logging.info("Worker.executor_submit called")
         executor = executor or self.executor
         job_counter[0] += 1
         # logger.info("%s:%d Starts job %d, %s", self.ip, self.port, i, key)
@@ -2203,6 +2229,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def actor_execute(self, comm=None, actor=None, function=None, args=(), kwargs={}):
+        logging.info("Worker.actor_execute called")
         separate_thread = kwargs.pop("separate_thread", True)
         key = actor
         actor = self.actors[key]
@@ -2244,6 +2271,7 @@ class Worker(ServerNode):
         return True
 
     def ensure_computing(self):
+        logging.info("Worker.ensure_computing called")
         if self.paused:
             return
         try:
@@ -2271,6 +2299,7 @@ class Worker(ServerNode):
 
     @gen.coroutine
     def execute(self, key, report=False):
+        logging.info("Worker.execute called")
         executor_error = None
         if self.status in ("closing", "closed"):
             return
@@ -2504,6 +2533,7 @@ class Worker(ServerNode):
             self.digests["profile-duration"].add(stop - start)
 
     def get_profile(self, comm=None, start=None, stop=None, key=None):
+        logging.info("Worker.get_profile called")
         now = time() + self.scheduler_delay
         if key is None:
             history = self.profile_history
@@ -2542,6 +2572,7 @@ class Worker(ServerNode):
         return prof
 
     def get_profile_metadata(self, comm=None, start=0, stop=None):
+        logging.info("Worker.get_profile_metadata called")
         if stop is None:
             add_recent = True
         now = time() + self.scheduler_delay
@@ -2565,6 +2596,7 @@ class Worker(ServerNode):
         return result
 
     def get_call_stack(self, comm=None, keys=None):
+        logging.info("Worker.get_call_stack called")
         with self.active_threads_lock:
             frames = sys._current_frames()
             active_threads = self.active_threads.copy()
@@ -2729,6 +2761,7 @@ class Worker(ServerNode):
         --------
         get_client
         """
+        logging.info("Worker._get_client called")
         try:
             from .client import default_client
 
@@ -2780,6 +2813,7 @@ class Worker(ServerNode):
         --------
         get_worker
         """
+        logging.info("Worker.get_current_task called")
         return self.active_threads[get_thread_identity()]
 
 
@@ -2801,6 +2835,7 @@ def get_worker():
     get_client
     worker_client
     """
+    logging.info("Worker.get_worker called")
     try:
         return thread_state.execution_state["worker"]
     except AttributeError:
@@ -2848,6 +2883,7 @@ def get_client(address=None, timeout=3, resolve_address=True):
     worker_client
     secede
     """
+    logging.info("Worker.get_client called")
     if address and resolve_address:
         address = comm.resolve_address(address)
     try:
@@ -2894,6 +2930,7 @@ def secede():
     get_client
     get_worker
     """
+    logging.info("Worker.secede called")
     worker = get_worker()
     tpe_secede()  # have this thread secede from the thread pool
     duration = time() - thread_state.start_time
@@ -2957,6 +2994,7 @@ def get_data_from_worker(
     Worker.gather_deps
     utils_comm.gather_data_from_workers
     """
+    logging.info("Worker.get_data_from_worker called")
     if serializers is None:
         serializers = rpc.serializers
     if deserializers is None:
@@ -2992,6 +3030,7 @@ job_counter = [0]
 
 def _deserialize(function=None, args=None, kwargs=None, task=None):
     """ Deserialize task inputs and regularize to func, args, kwargs """
+    logging.info("Worker._deserialize called")
     if function is not None:
         function = pickle.loads(function)
     if args:
@@ -3016,6 +3055,7 @@ def execute_task(task):
     >>> execute_task((sum, [1, 2, (inc, 3)]))
     7
     """
+    logging.info("Worker.execute_task called")
     if istask(task):
         func, args = task[0], task[1:]
         return func(*map(execute_task, args))
@@ -3201,6 +3241,7 @@ def convert_args_to_str(args, max_len=None):
     """ Convert args to a string, allowing for some arguments to raise
     exceptions during conversion and ignoring them.
     """
+    logging.info("Worker.convert_args_to_str called")
     length = 0
     strs = ["" for i in range(len(args))]
     for i, arg in enumerate(args):
@@ -3220,6 +3261,7 @@ def convert_kwargs_to_str(kwargs, max_len=None):
     """ Convert kwargs to a string, allowing for some arguments to raise
     exceptions during conversion and ignoring them.
     """
+    logging.info("Worker.convert_kwargs_to_str called")
     length = 0
     strs = ["" for i in range(len(kwargs))]
     for i, (argname, arg) in enumerate(kwargs.items()):
@@ -3242,6 +3284,7 @@ def weight(k, v):
 
 @gen.coroutine
 def run(server, comm, function, args=(), kwargs={}, is_coro=None, wait=True):
+    logging.info("Worker.run called")
     function = pickle.loads(function)
     if is_coro is None:
         is_coro = iscoroutinefunction(function)
