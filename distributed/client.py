@@ -595,7 +595,7 @@ class Client(Node):
         direct_to_workers=None,
         **kwargs
     ):
-        logger.info("Client.__init__ called")
+        logging.info("Client.__init__ called")
         if timeout == no_default:
             timeout = dask.config.get("distributed.comm.timeouts.connect")
         if timeout is not None:
@@ -650,7 +650,7 @@ class Client(Node):
         if address is None:
             address = dask.config.get("scheduler-address", None)
             if address:
-                logger.info("Config value `scheduler-address` found: %s", address)
+                logging.info("Config value `scheduler-address` found: %s", address)
 
         if isinstance(address, (rpc, PooledRPCCall)):
             self.scheduler = address
@@ -720,7 +720,7 @@ class Client(Node):
     @classmethod
     def current(cls):
         """ Return global client if one exists, otherwise raise ValueError """
-        logger.info("Client.current called")
+        logging.info("Client.current called")
         return default_client()
 
     @property
@@ -847,7 +847,7 @@ class Client(Node):
 
     def start(self, **kwargs):
         """ Start scheduler running in separate thread """
-        logger.info("Client.start called")
+        logging.info("Client.start called")
         if self.status != "newly-created":
             return
 
@@ -893,7 +893,7 @@ class Client(Node):
 
     @gen.coroutine
     def _start(self, timeout=no_default, **kwargs):
-        logger.info("Client._start called")
+        logging.info("Client._start called")
         if timeout == no_default:
             timeout = self._timeout
         if timeout is not None:
@@ -907,7 +907,7 @@ class Client(Node):
             except AttributeError:  # Some clusters don't have this method
                 pass
             except Exception:
-                logger.info(
+                logging.info(
                     "Tried to start cluster and received an error. " "Proceeding.",
                     exc_info=True,
                 )
@@ -1113,8 +1113,8 @@ class Client(Node):
                         msgs = yield self.scheduler_comm.comm.read()
                     except CommClosedError:
                         if self.status == "running":
-                            logger.info("Client report stream closed to scheduler")
-                            logger.info("Reconnecting...")
+                            logging.info("Client report stream closed to scheduler")
+                            logging.info("Reconnecting...")
                             self.status = "connecting"
                             yield self._reconnect()
                             continue
@@ -1181,7 +1181,7 @@ class Client(Node):
             state.set_error(exception, traceback)
 
     def _handle_restart(self):
-        logger.info("Receive restart signal from scheduler")
+        logging.info("Receive restart signal from scheduler")
         for state in self.futures.values():
             state.cancel()
         self.futures.clear()
@@ -1275,7 +1275,7 @@ class Client(Node):
         --------
         Client.restart
         """
-        logger.info("Client.close called")
+        logging.info("Client.close called")
         if timeout == no_default:
             timeout = self._timeout * 2
         # XXX handling of self.status here is not thread-safe
@@ -1365,7 +1365,7 @@ class Client(Node):
         --------
         Client.map: Submit on many arguments at once
         """
-        logger.info("Client.submit called")
+        logging.info("Client.submit called")
         if not callable(func):
             raise TypeError("First input to submit must be a callable function")
 
@@ -2372,7 +2372,7 @@ class Client(Node):
 
         >>> c.run(print_state, wait=False)  # doctest: +SKIP
         """
-        logger.info("Client.run called")
+        logging.info("Client.run called")
         return self.sync(self._run, function, *args, **kwargs)
 
     def run_coroutine(self, function, *args, **kwargs):
@@ -2417,7 +2417,7 @@ class Client(Node):
         fifo_timeout=0,
         actors=None,
     ):
-        logger.info("Client._graph_to_futures called")
+        logging.info("Client._graph_to_futures called")
         with self._refcount_lock:
             if resources:
                 resources = self._expand_resources(
