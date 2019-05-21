@@ -95,7 +95,8 @@ from .utils import (
 from .versions import get_versions
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('distributed.client')
+logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s] [%(process)s/%(threadName)s] [%(levelname)s] [%(name)s] %(message)s')
 
 _global_clients = weakref.WeakValueDictionary()
 _global_client_index = [0]
@@ -594,7 +595,7 @@ class Client(Node):
         direct_to_workers=None,
         **kwargs
     ):
-        logging.info("Client.__init__ called")
+        logger.info("Client.__init__ called")
         if timeout == no_default:
             timeout = dask.config.get("distributed.comm.timeouts.connect")
         if timeout is not None:
@@ -719,7 +720,7 @@ class Client(Node):
     @classmethod
     def current(cls):
         """ Return global client if one exists, otherwise raise ValueError """
-        logging.info("Client.current called")
+        logger.info("Client.current called")
         return default_client()
 
     @property
@@ -846,7 +847,7 @@ class Client(Node):
 
     def start(self, **kwargs):
         """ Start scheduler running in separate thread """
-        logging.info("Client.start called")
+        logger.info("Client.start called")
         if self.status != "newly-created":
             return
 
@@ -892,7 +893,7 @@ class Client(Node):
 
     @gen.coroutine
     def _start(self, timeout=no_default, **kwargs):
-        logging.info("Client._start called")
+        logger.info("Client._start called")
         if timeout == no_default:
             timeout = self._timeout
         if timeout is not None:
@@ -1274,7 +1275,7 @@ class Client(Node):
         --------
         Client.restart
         """
-        logging.info("Client.close called")
+        logger.info("Client.close called")
         if timeout == no_default:
             timeout = self._timeout * 2
         # XXX handling of self.status here is not thread-safe
@@ -1364,7 +1365,7 @@ class Client(Node):
         --------
         Client.map: Submit on many arguments at once
         """
-        logging.info("Client.submit called")
+        logger.info("Client.submit called")
         if not callable(func):
             raise TypeError("First input to submit must be a callable function")
 
@@ -2371,7 +2372,7 @@ class Client(Node):
 
         >>> c.run(print_state, wait=False)  # doctest: +SKIP
         """
-        logging.info("Client.run called")
+        logger.info("Client.run called")
         return self.sync(self._run, function, *args, **kwargs)
 
     def run_coroutine(self, function, *args, **kwargs):
@@ -2416,7 +2417,7 @@ class Client(Node):
         fifo_timeout=0,
         actors=None,
     ):
-        logging.info("Client._graph_to_futures called")
+        logger.info("Client._graph_to_futures called")
         with self._refcount_lock:
             if resources:
                 resources = self._expand_resources(
