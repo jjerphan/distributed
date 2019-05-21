@@ -44,8 +44,6 @@ class RPCClosed(IOError):
     pass
 
 
-logger = logging.getLogger(__name__)
-
 
 def get_total_physical_memory():
     try:
@@ -70,6 +68,9 @@ tick_maximum_delay = parse_timedelta(
 )
 
 LOG_PDB = dask.config.get("distributed.admin.pdb-on-err")
+
+logger = logging.getLogger('distributed.core')
+logging.basicConfig(level=logging.DEBUG, format='[%(asctime)s] [%(process)s/%(threadName)s] [%(levelname)s] [%(name)s] %(message)s')
 
 
 class Server(object):
@@ -404,7 +405,7 @@ class Server(object):
                     if serializers is not None and has_keyword(handler, "serializers"):
                         msg["serializers"] = serializers  # add back in
 
-                    logger.debug("Calling into handler %s", handler.__name__)
+                    logger.info("Calling into handler %s", handler.__name__)
                     try:
                         result = handler(comm, **msg)
                         if type(result) is gen.Future:
