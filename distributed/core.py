@@ -405,7 +405,7 @@ class Server(object):
                     if serializers is not None and has_keyword(handler, "serializers"):
                         msg["serializers"] = serializers  # add back in
 
-                    logger.info("Calling into handler %s", handler.__name__)
+                    # logger.info("Calling into handler %s", handler.__name__)
                     try:
                         result = handler(comm, **msg)
                         if type(result) is gen.Future:
