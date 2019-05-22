@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 
+import inspect
 from collections import defaultdict, deque, OrderedDict
 from datetime import timedelta
 from functools import partial
@@ -828,7 +829,8 @@ class Scheduler(ServerNode):
         idle_timeout=None,
         **kwargs
     ):
-        logging.info("Scheduler.__init__ called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.__init__ called from %s" % caller_name)
         self._setup_logging()
 
         # Attributes
@@ -1088,7 +1090,8 @@ class Scheduler(ServerNode):
     ##################
 
     def __repr__(self):
-        logging.info("Scheduler.__repr__ called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.__repr__ called from %s" % caller_name)
         return '<Scheduler: "%s" processes: %d cores: %d>' % (
             self.address,
             len(self.workers),
@@ -1122,7 +1125,8 @@ class Scheduler(ServerNode):
             Whether or not to include a full address with protocol (True)
             or just a (host, port) pair
         """
-        logging.info("Scheduler.get_worker_service_addr called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.get_worker_service_addr called from %s" % caller_name)
         ws = self.workers[worker]
         port = ws.services.get(service_name)
         if port is None:
@@ -1178,7 +1182,8 @@ class Scheduler(ServerNode):
 
     def start(self, addr_or_port=8786, start_queues=True):
         """ Clear out old state and restart all running coroutines """
-        logging.info("Scheduler.start called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.start called from %s" % caller_name)
         enable_gc_diagnosis()
 
         self.clear_task_state()
@@ -1241,7 +1246,8 @@ class Scheduler(ServerNode):
 
     def __await__(self):
         self.start()
-        logging.info("Scheduler.__await__ called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.__await__ called from %s" % caller_name)
 
         @gen.coroutine
         def _():
@@ -1252,7 +1258,8 @@ class Scheduler(ServerNode):
     @gen.coroutine
     def finished(self):
         """ Wait until all coroutines have ceased """
-        logging.info("Scheduler.finished called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.finished called from %s" % caller_name)
         while any(not c.done() for c in self.coroutines):
             yield All(self.coroutines)
 
@@ -1264,7 +1271,8 @@ class Scheduler(ServerNode):
         --------
         Scheduler.cleanup
         """
-        logging.info("Scheduler.close called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.close called from %s" % caller_name)
         if self.status.startswith("clos"):
             return
         self.status = "closing"
@@ -1325,7 +1333,8 @@ class Scheduler(ServerNode):
         signal to the worker to shut down.  This works regardless of whether or
         not the worker has a nanny process restarting it
         """
-        logging.info("Scheduler.close_worker called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.close_worker called from %s" % caller_name)
         logging.info("Closing worker %s", worker)
         with log_errors():
             self.log_event(worker, {"action": "close-worker"})
@@ -1336,7 +1345,8 @@ class Scheduler(ServerNode):
             self.remove_worker(address=worker, safe=safe)
 
     def _setup_logging(self):
-        logging.info("Scheduler._setup_logging called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler._setup_logging called from %s" % caller_name)
         self._deque_handler = DequeHandler(
             n=dask.config.get("distributed.admin.log-length")
         )
@@ -1419,7 +1429,8 @@ class Scheduler(ServerNode):
         local_directory=None,
     ):
         """ Add a new worker to the cluster """
-        logging.info("Scheduler.add_worker called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.add_worker called from %s" % caller_name)
         with log_errors():
             address = self.coerce_address(address, resolve_address)
             address = normalize_address(address)
@@ -1540,7 +1551,8 @@ class Scheduler(ServerNode):
 
         This happens whenever the Client calls submit, map, get, or compute.
         """
-        logging.info("Scheduler.update_graph called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.update_graph called from %s" % caller_name)
         start = time()
         fifo_timeout = parse_timedelta(fifo_timeout)
         keys = set(keys)
@@ -2194,7 +2206,8 @@ class Scheduler(ServerNode):
         If the message contains a key then we only send the message to those
         comms that care about the key.
         """
-        logging.info("Scheduler.report called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.report called from %s" % caller_name)
         if client is not None:
             try:
                 comm = self.client_comms[client]
@@ -2231,7 +2244,8 @@ class Scheduler(ServerNode):
 
         We listen to all future messages from this Comm.
         """
-        logging.info("Scheduler.add_client called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.add_client called from %s" % caller_name)
         assert client is not None
         comm.name = "Scheduler->Client"
         logging.info("Receive client connection: %s", client)
@@ -2262,7 +2276,8 @@ class Scheduler(ServerNode):
 
     def remove_client(self, client=None):
         """ Remove client from network """
-        logging.info("Scheduler.remove_client called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.remove_client called from %s" % caller_name)
         if self.status == "running":
             logging.info("Remove client %s", client)
         self.log_event(["all", client], {"action": "remove-client", "client": client})
@@ -2289,7 +2304,8 @@ class Scheduler(ServerNode):
         self.loop.call_later(cleanup_delay, remove_client_from_events)
 
     def send_task_to_worker(self, worker, key):
-        logging.info("Scheduler.send_task_to_worker called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.send_task_to_worker called from %s" % caller_name)
         """ Send a single computational task to a worker """
         try:
             ts = self.tasks[key]
@@ -2334,7 +2350,8 @@ class Scheduler(ServerNode):
         logger.exception(clean_exception(**msg)[1])
 
     def handle_task_finished(self, key=None, worker=None, **msg):
-        logging.info("Scheduler.handle_task_finished called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.handle_task_finished called from %s" % caller_name)
         if worker not in self.workers:
             return
         validate_key(key)
@@ -2342,12 +2359,14 @@ class Scheduler(ServerNode):
         self.transitions(r)
 
     def handle_task_erred(self, key=None, **msg):
-        logging.info("Scheduler.handle_task_erred called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.handle_task_erred called from %s" % caller_name)
         r = self.stimulus_task_erred(key=key, **msg)
         self.transitions(r)
 
     def handle_release_data(self, key=None, worker=None, client=None, **msg):
-        logging.info("Scheduler.handle_release_data called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.handle_release_data called from %s" % caller_name)
         ts = self.tasks.get(key)
         if ts is None:
             return
@@ -2358,7 +2377,8 @@ class Scheduler(ServerNode):
         self.transitions(r)
 
     def handle_missing_data(self, key=None, errant_worker=None, **kwargs):
-        logging.info("Scheduler.handle_missing_data called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.handle_missing_data called from %s" % caller_name)
         logger.debug("handle missing data key=%s worker=%s", key, errant_worker)
         self.log.append(("missing", key, errant_worker))
 
@@ -2378,7 +2398,8 @@ class Scheduler(ServerNode):
                 self.transitions({key: "forgotten"})
 
     def release_worker_data(self, stream=None, keys=None, worker=None):
-        logging.info("Scheduler.release_worker_data called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.release_worker_data called from %s" % caller_name)
         ws = self.workers[worker]
         tasks = {self.tasks[k] for k in keys}
         removed_tasks = tasks & ws.has_what
@@ -2400,7 +2421,8 @@ class Scheduler(ServerNode):
         We stop the task from being stolen in the future, and change task
         duration accounting as if the task has stopped.
         """
-        logging.info("Scheduler.handle_long_running called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.handle_long_running called from %s" % caller_name)
         ts = self.tasks[key]
         if "stealing" in self.extensions:
             self.extensions["stealing"].remove_key_from_stealable(ts)
@@ -2439,7 +2461,8 @@ class Scheduler(ServerNode):
         --------
         Scheduler.handle_client: Equivalent coroutine for clients
         """
-        logging.info("Scheduler.handle_worker called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.handle_worker called from %s" % caller_name)
         comm.name = "Scheduler connection to worker"
         worker_comm = self.stream_comms[worker]
         worker_comm.start(comm)
@@ -2457,7 +2480,8 @@ class Scheduler(ServerNode):
 
         See https://distributed.readthedocs.io/en/latest/plugins.html
         """
-        logging.info("Scheduler.add_plugin called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.add_plugin called from %s" % caller_name)
         if isinstance(plugin, type):
             plugin = plugin(self, **kwargs)
 
@@ -2468,7 +2492,8 @@ class Scheduler(ServerNode):
 
     def remove_plugin(self, plugin):
         """ Remove external plugin from scheduler """
-        logging.info("Scheduler.remove_plugin called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.remove_plugin called from %s" % caller_name)
         self.plugins.remove(plugin)
 
     def worker_send(self, worker, msg):
@@ -2477,7 +2502,8 @@ class Scheduler(ServerNode):
         This also handles connection failures by adding a callback to remove
         the worker on the next cycle.
         """
-        logging.info("Scheduler.worker_send called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.worker_send called from %s" % caller_name)
         try:
             self.stream_comms[worker].send(msg)
         except (CommClosedError, AttributeError):
@@ -2503,7 +2529,8 @@ class Scheduler(ServerNode):
         --------
         Scheduler.broadcast:
         """
-        logging.info("Scheduler.scatter called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.scatter called from %s" % caller_name)
         start = time()
         while not self.workers:
             yield gen.sleep(0.2)
@@ -2539,7 +2566,8 @@ class Scheduler(ServerNode):
     @gen.coroutine
     def gather(self, comm=None, keys=None, serializers=None):
         """ Collect data in from workers """
-        logging.info("Scheduler.gather called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.gather called from %s" % caller_name)
         keys = list(keys)
         who_has = {}
         for key in keys:
@@ -2599,7 +2627,8 @@ class Scheduler(ServerNode):
     @gen.coroutine
     def restart(self, client=None, timeout=3):
         """ Restart all workers.  Reset local state. """
-        logging.info("Scheduler.restart called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.restart called from %s" % caller_name)
         with log_errors():
 
             n_workers = len(self.workers)
@@ -2684,7 +2713,8 @@ class Scheduler(ServerNode):
         serializers=None,
     ):
         """ Broadcast message to workers, return all results """
-        logging.info("Scheduler.broadcast called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.broadcast called from %s" % caller_name)
         if workers is None:
             if hosts is None:
                 workers = list(self.workers)
@@ -2721,7 +2751,8 @@ class Scheduler(ServerNode):
     @gen.coroutine
     def proxy(self, comm=None, msg=None, worker=None, serializers=None):
         """ Proxy a communication through the scheduler to some other worker """
-        logging.info("Scheduler.proxy called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.proxy called from %s" % caller_name)
         d = yield self.broadcast(
             comm=comm, msg=msg, workers=[worker], serializers=serializers
         )
@@ -2739,7 +2770,8 @@ class Scheduler(ServerNode):
         occupied worker until either the sender or the recipient are at the
         average expected load.
         """
-        logging.info("Scheduler.rebalance called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.rebalance called from %s" % caller_name)
         with log_errors():
             if keys:
                 tasks = {self.tasks[k] for k in keys}
@@ -2882,7 +2914,8 @@ class Scheduler(ServerNode):
         --------
         Scheduler.rebalance
         """
-        logging.info("Scheduler.replicate called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.replicate called from %s" % caller_name)
         assert branching_factor > 0
 
         workers = {self.workers[w] for w in self.workers_list(workers)}
@@ -3015,7 +3048,8 @@ class Scheduler(ServerNode):
         --------
         Scheduler.retire_workers
         """
-        logging.info("Scheduler.workers_to_close called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.workers_to_close called from %s" % caller_name)
         if n is None and memory_ratio is None:
             memory_ratio = 2
 
@@ -3102,7 +3136,8 @@ class Scheduler(ServerNode):
         --------
         Scheduler.workers_to_close
         """
-        logging.info("Scheduler.retire_workers called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.retire_workers called from %s" % caller_name)
         with log_errors():
             if workers is None:
                 while True:
@@ -3164,7 +3199,8 @@ class Scheduler(ServerNode):
         This should not be used in practice and is mostly here for legacy
         reasons.  However, it is sent by workers from time to time.
         """
-        logging.info("Scheduler.add_keys called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.add_keys called from %s" % caller_name)
         if worker not in self.workers:
             return "not found"
         ws = self.workers[worker]
@@ -3192,7 +3228,8 @@ class Scheduler(ServerNode):
         --------
         Scheduler.mark_key_in_memory
         """
-        logging.info("Scheduler.update_data called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.update_data called from %s" % caller_name)
         with log_errors():
             who_has = {
                 k: [self.coerce_address(vv) for vv in v] for k, v in who_has.items()
@@ -3220,7 +3257,8 @@ class Scheduler(ServerNode):
                 self.client_desires_keys(keys=list(who_has), client=client)
 
     def report_on_key(self, key=None, ts=None, client=None):
-        logging.info("Scheduler.report_on_key called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.report_on_key called from %s" % caller_name)
         assert (key is None) + (ts is None) == 1, (key, ts)
         if ts is None:
             try:
@@ -3257,7 +3295,8 @@ class Scheduler(ServerNode):
         Caution: this runs arbitrary Python code on the scheduler.  This should
         eventually be phased out.  It is mostly used by diagnostics.
         """
-        logging.info("Scheduler.feed called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.feed called from %s" % caller_name)
         import pickle
 
         interval = parse_timedelta(interval)
@@ -3446,7 +3485,8 @@ class Scheduler(ServerNode):
     @gen.coroutine
     def register_worker_callbacks(self, comm, setup=None):
         """ Registers a setup function, and call it on every worker """
-        logging.info("Scheduler.register_worker_callbacks called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.register_worker_callbacks called from %s" % caller_name)
         if setup is None:
             raise gen.Return({})
 
@@ -3463,7 +3503,8 @@ class Scheduler(ServerNode):
         """
         Remove *ts* from the set of processing tasks.
         """
-        logging.info("Scheduler._remove_from_processing called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler._remove_from_processing called from %s" % caller_name)
         ws = ts.processing_on
         ts.processing_on = None
         w = ws.address
@@ -3486,7 +3527,8 @@ class Scheduler(ServerNode):
         """
         Add *ts* to the set of in-memory tasks.
         """
-        logging.info("Scheduler._add_to_memory called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler._add_to_memory called from %s" % caller_name)
         if self.validate:
             assert ts not in ws.has_what
 
@@ -3624,7 +3666,8 @@ class Scheduler(ServerNode):
         """
         Decide on a worker for task *ts*.  Return a WorkerState.
         """
-        logging.info("Scheduler.decide_worker called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.decide_worker called from %s" % caller_name)
         valid_workers = self.valid_workers(ts)
 
         if not valid_workers and not ts.loose_restrictions and self.workers:
@@ -4360,7 +4403,8 @@ class Scheduler(ServerNode):
         This includes feedback from previous transitions and continues until we
         reach a steady state
         """
-        logging.info("Scheduler.transitions called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.transitions called from %s" % caller_name)
         keys = set()
         recommendations = recommendations.copy()
         while recommendations:
@@ -4375,7 +4419,8 @@ class Scheduler(ServerNode):
 
     def story(self, *keys):
         """ Get all transitions that touch one of the input keys """
-        logging.info("Scheduler.story called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.story called from %s" % caller_name)
         keys = set(keys)
         return [
             t for t in self.transition_log if t[0] in keys or keys.intersection(t[3])
@@ -4389,7 +4434,8 @@ class Scheduler(ServerNode):
         Things may have shifted and this task may now be better suited to run
         elsewhere
         """
-        logging.info("Scheduler.reschedule called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.reschedule called from %s" % caller_name)
         ts = self.tasks[key]
         if ts.state != "processing":
             return
@@ -4402,7 +4448,8 @@ class Scheduler(ServerNode):
     ##############################
 
     def check_idle_saturated(self, ws, occ=None):
-        logging.info("Scheduler.check_idle_saturated called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.check_idle_saturated called from %s" % caller_name)
         if self.total_ncores == 0 or ws.status == "closed":
             return
         if occ is None:
@@ -4434,7 +4481,8 @@ class Scheduler(ServerNode):
         *  host_restrictions
         *  resource_restrictions
         """
-        logging.info("Scheduler.valid_workers called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.valid_workers called from %s" % caller_name)
         s = True
 
         if ts.worker_restrictions:
@@ -4475,13 +4523,15 @@ class Scheduler(ServerNode):
             return {self.workers[w] for w in s}
 
     def consume_resources(self, ts, ws):
-        logging.info("Scheduler.consumre_resources called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.consumre_resources called from %s" % caller_name)
         if ts.resource_restrictions:
             for r, required in ts.resource_restrictions.items():
                 ws.used_resources[r] += required
 
     def release_resources(self, ts, ws):
-        logging.info("Scheduler.release_resources called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.release_resources called from %s" % caller_name)
         if ts.resource_restrictions:
             for r, required in ts.resource_restrictions.items():
                 ws.used_resources[r] -= required
@@ -4491,7 +4541,8 @@ class Scheduler(ServerNode):
     #####################
 
     def add_resources(self, stream=None, worker=None, resources=None):
-        logging.info("Scheduler.add_resources called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.add_resources called from %s" % caller_name)
         ws = self.workers[worker]
         if resources:
             ws.resources.update(resources)
@@ -4502,7 +4553,8 @@ class Scheduler(ServerNode):
         return "OK"
 
     def remove_resources(self, worker):
-        logging.info("Scheduler.remove_resources called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.remove_resources called from %s" % caller_name)
         ws = self.workers[worker]
         for resource, quantity in ws.resources.items():
             del self.resources[resource][worker]
@@ -4533,7 +4585,8 @@ class Scheduler(ServerNode):
         """
         Coerce the hostname of a worker.
         """
-        logging.info("Scheduler.coerce_hostname called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.coerce_hostname called from %s" % caller_name)
         if host in self.aliases:
             return self.workers[self.aliases[host]].host
         else:
@@ -4546,7 +4599,8 @@ class Scheduler(ServerNode):
         Takes a list of worker addresses or hostnames.
         Returns a list of all worker addresses that match
         """
-        logging.info("Scheduler.worker_list called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.worker_list called from %s" % caller_name)
         if workers is None:
             return list(self.workers)
 
@@ -4564,7 +4618,8 @@ class Scheduler(ServerNode):
         Returns Jupyter connection info dictionary.
         """
         from ._ipython_utils import start_ipython
-        logging.info("Scheduler.start_ipython called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.start_ipython called from %s" % caller_name)
 
         if self._ipython_kernel is None:
             self._ipython_kernel = start_ipython(
@@ -4578,7 +4633,8 @@ class Scheduler(ServerNode):
 
         Minimize expected start time.  If a tie then break with data storage.
         """
-        logging.info("Scheduler.worker_objective called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.worker_objective called from %s" % caller_name)
         comm_bytes = sum(
             [dts.get_nbytes() for dts in ts.dependencies if ws not in dts.who_has]
         )
@@ -4600,7 +4656,8 @@ class Scheduler(ServerNode):
         stop=None,
         key=None,
     ):
-        logging.info("Scheduler.get_profile called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.get_profile called from %s" % caller_name)
         if workers is None:
             workers = self.workers
         else:
@@ -4622,7 +4679,8 @@ class Scheduler(ServerNode):
         stop=None,
         profile_cycle_interval=None,
     ):
-        logging.info("Scheduler.get_profile_metadata called")
+        caller_name = inspect.stack()[1][3]
+        logging.info("Scheduler.get_profile_metadata called from %s" % caller_name)
         dt = profile_cycle_interval or dask.config.get(
             "distributed.worker.profile.cycle"
         )
@@ -4794,7 +4852,8 @@ def decide_worker(ts, all_workers, valid_workers, objective):
     of bytes sent between workers.  This is determined by calling the
     *objective* function.
     """
-    logging.info("Scheduler.decide_worker called")
+    caller_name = inspect.stack()[1][3]
+    logging.info("Scheduler.decide_worker called from %s" % caller_name)
     deps = ts.dependencies
     assert all(dts.who_has for dts in deps)
     if ts.actor:
@@ -4826,7 +4885,8 @@ def validate_task_state(ts):
     """
     Validate the given TaskState.
     """
-    logging.info("Scheduler.validate_task_state called")
+    caller_name = inspect.stack()[1][3]
+    logging.info("Scheduler.validate_task_state called from %s" % caller_name)
     assert ts.state in ALL_TASK_STATES or ts.state == "forgotten", ts
 
     if ts.waiting_on:
@@ -4921,7 +4981,8 @@ def validate_task_state(ts):
 
 
 def validate_worker_state(ws):
-    logging.info("Scheduler.validate_worker_state called")
+    caller_name = inspect.stack()[1][3]
+    logging.info("Scheduler.validate_worker_state called from %s" % caller_name)
     for ts in ws.has_what:
         assert ws in ts.who_has, (
             "not in has_what' who_has",
@@ -4941,7 +5002,8 @@ def validate_state(tasks, workers, clients):
     This performs a sequence of checks on the entire graph, running in about
     linear time.  This raises assert errors if anything doesn't check out.
     """
-    logging.info("Scheduler.validate_state called")
+    caller_name = inspect.stack()[1][3]
+    logging.info("Scheduler.validate_state called from %s" % caller_name)
     for ts in tasks.values():
         validate_task_state(ts)
 
