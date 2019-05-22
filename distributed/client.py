@@ -741,6 +741,7 @@ class Client(Node):
         return self._asynchronous and self.loop is IOLoop.current()
 
     def sync(self, func, *args, **kwargs):
+        logger.info("Client.sync called")
         asynchronous = kwargs.pop("asynchronous", None)
         if (
             asynchronous
@@ -2045,7 +2046,7 @@ class Client(Node):
         if timeout == no_default:
             timeout = self._timeout
         if isqueue(data) or isinstance(data, Iterator):
-            logger.debug("Starting thread for streaming data")
+            logger.info("Starting thread for streaming data")
             qout = pyQueue(maxsize=maxsize)
 
             t = threading.Thread(
