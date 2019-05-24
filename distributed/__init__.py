@@ -43,7 +43,4 @@ __git_revision__ = versions["full-revisionid"]
 logging.info("Distributed %s imported" % __version__)
 logging.info("Git revision: %s" % __git_revision__)
 
-git_branches = subprocess.check_output(["git", "branch"])
-logging.info("git branches:\n%s" % git_branches)
-
 del get_versions, versions
