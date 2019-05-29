@@ -452,18 +452,24 @@ class Server(object):
         extra = extra or {}
         caller_name = inspect.stack()[1][3]
         logger.info("Server.handle_long_running called from %s" % caller_name)
+        logger.info("Server.handle_long_running arguments")
+        for k, v in locals().items():
+            logging.info("%s ; id: %s ; type: %s ; value: %s" % (k, id(v), type(v), v))
 
         logger.info("Server.handle_long_running: Starting established connection")
         io_error = None
         closed = False
         try:
             while not closed:
+                logger.info("Server.handle_long_running: still not closed")
                 msgs = yield comm.read()
                 if not isinstance(msgs, (tuple, list)):
                     msgs = (msgs,)
 
                 if not comm.closed():
+                    logger.info("Server.handle_long_running: got %s messages" % len(msgs))
                     for msg in msgs:
+                        logger.info("Server.handle_long_running: message: %s" % msg)
                         if msg == "OK":  # from close
                             break
                         op = msg.pop("op")
@@ -472,10 +478,12 @@ class Server(object):
                                 closed = True
                                 break
                             handler = self.stream_handlers[op]
+                            logger.info("Server.handle_long_running: Using handler %s" % handler)
                             handler(**merge(extra, msg))
                         else:
                             logger.error("odd message %s", msg)
                 for func in every_cycle:
+                    logger.info("Server.handle_long_running: func: %s" % func)
                     func()
 
         except (CommClosedError, EnvironmentError) as e:
@@ -488,8 +496,10 @@ class Server(object):
                 pdb.set_trace()
             raise
         finally:
+            logger.info("Server.handle_long_running: Closing comm")
             comm.close()  # TODO: why do we need this now?
             assert comm.closed()
+            logger.info("Server.handle_long_running: Comm closed")
             logger.info("Server.handle_long_running: Done with starting established connection")
 
     @gen.coroutine
