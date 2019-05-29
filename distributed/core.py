@@ -1,5 +1,6 @@
 from __future__ import print_function, division, absolute_import
 
+import inspect
 from collections import defaultdict, deque
 from concurrent.futures import CancelledError
 from functools import partial
@@ -449,8 +450,10 @@ class Server(object):
     @gen.coroutine
     def handle_stream(self, comm, extra=None, every_cycle=[]):
         extra = extra or {}
-        logger.info("Starting established connection")
+        caller_name = inspect.stack()[1][3]
+        logger.info("Server.handle_long_running called from %s" % caller_name)
 
+        logger.info("Server.handle_long_running: Starting established connection")
         io_error = None
         closed = False
         try:
@@ -487,6 +490,7 @@ class Server(object):
         finally:
             comm.close()  # TODO: why do we need this now?
             assert comm.closed()
+            logger.info("Server.handle_long_running: Done with starting established connection")
 
     @gen.coroutine
     def close(self):

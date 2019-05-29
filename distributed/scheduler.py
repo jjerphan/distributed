@@ -2466,13 +2466,14 @@ class Scheduler(ServerNode):
         comm.name = "Scheduler connection to worker"
         worker_comm = self.stream_comms[worker]
         worker_comm.start(comm)
-        logging.info("Starting worker compute stream, %s", worker)
+        logging.info("Scheduler.handle_worker: Starting worker compute stream, %s", worker)
         try:
             yield self.handle_stream(comm=comm, extra={"worker": worker})
         finally:
             if worker in self.stream_comms:
                 worker_comm.abort()
                 self.remove_worker(address=worker)
+        logging.info("Scheduler.handle_worker: Done with starting worker compute stream, %s", worker)
 
     def add_plugin(self, plugin=None, idempotent=False, **kwargs):
         """
