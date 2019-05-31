@@ -4449,9 +4449,30 @@ class Scheduler(ServerNode):
     ##############################
 
     def check_idle_saturated(self, ws, occ=None):
+        """ Update the status of the idle and saturated state
+
+        The scheduler keeps track of workers that are ..
+
+            -  Saturated: have enough work to stay busy
+            -  Idle: do not have enough work to stay busy
+
+        They are considered saturated if they both have enough tasks to occupy
+        all of their cores, and if the expected runtime of those tasks is large
+        enough.
+
+        This is useful for load balancing and adaptivity.
+
+        --
+        Doctring taken from PR: https://github.com/dask/distributed/pull/2721/files
+
+        """
+        import uuid
+        unique_id = uuid.uuid4()
         caller_name = inspect.stack()[1][3]
-        logging.info("Scheduler.check_idle_saturated called from %s" % caller_name)
+        logging.info("[%s] Scheduler.check_idle_saturated called from %s" % (unique_id, caller_name))
+
         if self.total_ncores == 0 or ws.status == "closed":
+            logging.info("[%s] Returning ; total_ncores=%s, ws.status=%s" % (unique_id, self.total_ncores, ws.status))
             return
         if occ is None:
             occ = ws.occupancy
@@ -4460,17 +4481,26 @@ class Scheduler(ServerNode):
 
         avg = self.total_occupancy / self.total_ncores
 
+        logging.info("[%s] ws  = %s" % (unique_id, ws))
+        logging.info("[%s] occ = %s" % (unique_id, occ))
+        logging.info("[%s] nc  = %s" % (unique_id, nc))
+        logging.info("[%s] p   = %s" % (unique_id, p))
+        logging.info("[%s] avg = %s" % (unique_id, avg))
+
         if p < nc or occ / nc < avg / 2:
             self.idle.add(ws)
             self.saturated.discard(ws)
+            logging.info("[%s] %s idle ; not saturated" % (unique_id, ws))
         else:
             self.idle.discard(ws)
 
             pending = occ * (p - nc) / p / nc
             if p > nc and pending > 0.4 and pending > 1.9 * avg:
                 self.saturated.add(ws)
+                logging.info("[%s] %s not idle ; saturated" % (unique_id, ws))
             else:
                 self.saturated.discard(ws)
+                logging.info("[%s] %s not idle ; not saturated" % (unique_id, ws))
 
     def valid_workers(self, ts):
         """ Return set of currently valid workers for key
