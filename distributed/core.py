@@ -246,7 +246,7 @@ class Server(object):
         diff = now - self._last_tick
         self._last_tick = now
         if diff > tick_maximum_delay:
-            logger.info(
+            logging.info(
                 "Event loop was unresponsive in %s for %.2fs.  "
                 "This is often caused by long-running GIL-holding "
                 "functions or moving large chunks of data. "
@@ -341,16 +341,16 @@ class Server(object):
         address = comm.peer_address
         op = None
 
-        logger.debug("Connection from %r to %s", address, type(self).__name__)
+        logging.debug("Connection from %r to %s", address, type(self).__name__)
         self._comms[comm] = op
         try:
             while True:
                 try:
                     msg = yield comm.read()
-                    logger.debug("Message from %r: %s", address, msg)
+                    logging.debug("Message from %r: %s", address, msg)
                 except EnvironmentError as e:
                     if not shutting_down():
-                        logger.debug(
+                        logging.debug(
                             "Lost connection to %r while reading message: %s."
                             " Last operation: %s",
                             address,
@@ -359,7 +359,7 @@ class Server(object):
                         )
                     break
                 except Exception as e:
-                    logger.exception(e)
+                    logging.exception(e)
                     yield comm.write(error_message(e, status="uncaught-error"))
                     continue
                 if not isinstance(msg, dict):
@@ -396,7 +396,7 @@ class Server(object):
                     else:
                         handler = self.handlers[op]
                 except KeyError:
-                    logger.warning(
+                    logging.warning(
                         "No handler %s found in %s",
                         op,
                         type(self).__name__,
@@ -406,7 +406,7 @@ class Server(object):
                     if serializers is not None and has_keyword(handler, "serializers"):
                         msg["serializers"] = serializers  # add back in
 
-                    # logger.info("Calling into handler %s", handler.__name__)
+                    # logging.info("Calling into handler %s", handler.__name__)
                     try:
                         result = handler(comm, **msg)
                         if type(result) is gen.Future:
@@ -414,17 +414,17 @@ class Server(object):
                             result = yield result
                     except (CommClosedError, CancelledError) as e:
                         if self.status == "running":
-                            logger.info("Lost connection to %r: %s", address, e)
+                            logging.info("Lost connection to %r: %s", address, e)
                         break
                     except Exception as e:
-                        logger.exception(e)
+                        logging.exception(e)
                         result = error_message(e, status="uncaught-error")
 
                 if reply and result != "dont-reply":
                     try:
                         yield comm.write(result, serializers=serializers)
                     except (EnvironmentError, TypeError) as e:
-                        logger.debug(
+                        logging.debug(
                             "Lost connection to %r while sending result for op %r: %s",
                             address,
                             op,
@@ -443,7 +443,7 @@ class Server(object):
                 try:
                     comm.abort()
                 except Exception as e:
-                    logger.error(
+                    logging.error(
                         "Failed while closing connection to %r: %s", address, e
                     )
 

@@ -556,7 +556,7 @@ class Worker(ServerNode):
             try:
                 from distributed.dashboard import BokehWorker
             except ImportError:
-                logger.debug("To start diagnostics web server please install Bokeh")
+                logging.debug("To start diagnostics web server please install Bokeh")
             else:
                 self.service_specs[("dashboard", dashboard_address)] = (
                     BokehWorker,
@@ -683,8 +683,8 @@ class Worker(ServerNode):
         self._deque_handler.setFormatter(
             logging.Formatter(dask.config.get("distributed.admin.log-format"))
         )
-        logger.addHandler(self._deque_handler)
-        finalize(self, logger.removeHandler, self._deque_handler)
+        logging.addHandler(self._deque_handler)
+        finalize(self, logging.removeHandler, self._deque_handler)
 
     @property
     def worker_address(self):
@@ -728,7 +728,7 @@ class Worker(ServerNode):
         logging.info("-" * 49)
         while True:
             if self.death_timeout and time() > start + self.death_timeout:
-                logger.exception(
+                logging.exception(
                     "Timed out when connecting to scheduler '%s'",
                     self.scheduler.address,
                 )
@@ -804,7 +804,7 @@ class Worker(ServerNode):
     def heartbeat(self):
         if not self.heartbeat_active:
             self.heartbeat_active = True
-            logger.debug("Heartbeat: %s" % self.address)
+            logging.debug("Heartbeat: %s" % self.address)
             try:
                 start = time()
                 response = yield self.scheduler.heartbeat_worker(
@@ -821,11 +821,11 @@ class Worker(ServerNode):
                     response["heartbeat-interval"] * 1000
                 )
             except CommClosedError:
-                logger.warning("Heartbeat to scheduler failed")
+                logging.warning("Heartbeat to scheduler failed")
             finally:
                 self.heartbeat_active = False
         else:
-            logger.debug("Heartbeat skipped: channel busy")
+            logging.debug("Heartbeat skipped: channel busy")
 
     @gen.coroutine
     def handle_scheduler(self, comm):
@@ -835,7 +835,7 @@ class Worker(ServerNode):
                 comm, every_cycle=[self.ensure_communicating, self.ensure_computing]
             )
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             raise
         finally:
             if self.reconnect:
@@ -880,7 +880,7 @@ class Worker(ServerNode):
             try:
                 import_file(out_filename)
             except Exception as e:
-                logger.exception(e)
+                logging.exception(e)
                 raise gen.Return({"status": "error", "exception": to_serialize(e)})
 
         raise gen.Return({"status": "OK", "nbytes": len(data)})
@@ -900,7 +900,7 @@ class Worker(ServerNode):
             who_has, rpc=self.rpc, who=self.address
         )
         if missing_keys:
-            logger.warning(
+            logging.warning(
                 "Could not find data: %s on workers: %s (who_has: %s)",
                 missing_keys,
                 missing_workers,
@@ -983,10 +983,10 @@ class Worker(ServerNode):
         logging.info("      Start worker at: %26s", self.address)
         logging.info("         Listening to: %26s", listening_address)
         for k, v in self.service_ports.items():
-            logger.info("  %16s at: %26s" % (k, listen_host + ":" + str(v)))
-            logger.info("Waiting to connect to: %26s", self.scheduler.address)
-            logger.info("-" * 49)
-            logger.info("              Threads: %26d", self.nthreads)
+            logging.info("  %16s at: %26s" % (k, listen_host + ":" + str(v)))
+            logging.info("Waiting to connect to: %26s", self.scheduler.address)
+            logging.info("-" * 49)
+            logging.info("              Threads: %26d", self.nthreads)
         if self.memory_limit:
             logging.info("               Memory: %26s", format_bytes(self.memory_limit))
             logging.info("      Local Directory: %26s", self.local_dir)
@@ -1167,7 +1167,7 @@ class Worker(ServerNode):
             response = yield comm.read(deserializers=serializers)
             assert response == "OK", response
         except EnvironmentError:
-            logger.exception(
+            logging.exception(
                 "failed during get data with %s -> %s", self.address, who, exc_info=True
             )
             comm.abort()
@@ -1237,9 +1237,9 @@ class Worker(ServerNode):
                 if key in self.dep_state:
                     self.release_dep(key)
 
-            logger.debug("Deleted %d keys", len(keys))
+            logging.debug("Deleted %d keys", len(keys))
             if report:
-                logger.debug("Reporting loss of keys to scheduler")
+                logging.debug("Reporting loss of keys to scheduler")
                 # TODO: this route seems to not exist?
                 yield self.scheduler.remove_keys(
                     address=self.contact_address, keys=list(keys)
@@ -1285,7 +1285,7 @@ class Worker(ServerNode):
                 state = self.task_state[key]
                 if state == "memory":
                     assert key in self.data or key in self.actors
-                    logger.debug(
+                    logging.debug(
                         "Asked to compute pre-existing result: %s: %s", key, state
                     )
                     self.send_task_state_to_scheduler(key)
@@ -1320,7 +1320,7 @@ class Worker(ServerNode):
                 if stop - start > 0.010:
                     self.startstops[key].append(("deserialize", start, stop))
             except Exception as e:
-                logger.warning("Could not deserialize task", exc_info=True)
+                logging.warning("Could not deserialize task", exc_info=True)
                 emsg = error_message(e)
                 emsg["key"] = key
                 emsg["op"] = "task-erred"
@@ -1380,7 +1380,7 @@ class Worker(ServerNode):
                         self.validate_dep(dep)
                     self.validate_key(key)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1411,7 +1411,7 @@ class Worker(ServerNode):
 
             self.in_flight_tasks[dep] = worker
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1448,7 +1448,7 @@ class Worker(ServerNode):
             if not self.dependents[dep]:
                 self.release_dep(dep)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1469,7 +1469,7 @@ class Worker(ServerNode):
                 self.release_dep(dep)
 
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1484,7 +1484,7 @@ class Worker(ServerNode):
                 assert dep in self.types
                 assert self.task_state[dep] == "memory"
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1525,7 +1525,7 @@ class Worker(ServerNode):
             else:
                 heapq.heappush(self.ready, (self.priorities[key], key))
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1543,7 +1543,7 @@ class Worker(ServerNode):
             del self.waiting_for_data[key]
             self.send_task_state_to_scheduler(key)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1565,7 +1565,7 @@ class Worker(ServerNode):
             self.executing.add(key)
             self.loop.add_callback(self.execute, key)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1626,7 +1626,7 @@ class Worker(ServerNode):
         except EnvironmentError:
             logging.info("Comm closed")
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1646,7 +1646,7 @@ class Worker(ServerNode):
 
             self.ensure_computing()
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1687,7 +1687,7 @@ class Worker(ServerNode):
                 and len(self.in_flight_workers) < self.total_out_connections
             ):
                 changed = False
-                logger.debug(
+                logging.debug(
                     "Ensure communicating.  Pending: %d.  Connections: %d/%d",
                     len(self.data_needed),
                     len(self.in_flight_workers),
@@ -1765,7 +1765,7 @@ class Worker(ServerNode):
                 if not deps and not in_flight:
                     self.data_needed.popleft()
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -1806,7 +1806,7 @@ class Worker(ServerNode):
                 "traceback": self.tracebacks[key],
             }
         else:
-            logger.error(
+            logging.error(
                 "Key not ready to send to worker, %s: %s", key, self.task_state[key]
             )
             return
@@ -1880,7 +1880,7 @@ class Worker(ServerNode):
                 deps = tuple(dep for dep in deps if self.dep_state.get(dep) == "flight")
 
                 self.log.append(("request-dep", dep, worker, deps))
-                logger.debug("Request %d keys", len(deps))
+                logging.debug("Request %d keys", len(deps))
 
                 start = time()
                 response = yield get_data_from_worker(
@@ -1936,7 +1936,7 @@ class Worker(ServerNode):
                         {"op": "add-keys", "keys": list(response["data"])}
                     )
             except EnvironmentError as e:
-                logger.exception("Worker stream died during communication: %s", worker)
+                logging.exception("Worker stream died during communication: %s", worker)
                 self.log.append(("receive-dep-failed", worker))
                 for d in self.has_what.pop(worker):
                     self.who_has[d].remove(worker)
@@ -1944,7 +1944,7 @@ class Worker(ServerNode):
                         del self.who_has[d]
 
             except Exception as e:
-                logger.exception(e)
+                logging.exception(e)
                 if self.batched_stream and LOG_PDB:
                     import pdb
 
@@ -2036,7 +2036,7 @@ class Worker(ServerNode):
                             self.data_needed.append(key)
 
         except Exception:
-            logger.error("Handle missing dep failed, retrying", exc_info=True)
+            logging.error("Handle missing dep failed, retrying", exc_info=True)
             retries = kwargs.get("retries", 5)
             self.log.append(("handle-missing-failed", retries, deps))
             if retries > 0:
@@ -2073,7 +2073,7 @@ class Worker(ServerNode):
                 for worker in workers:
                     self.has_what[worker].add(dep)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -2103,7 +2103,7 @@ class Worker(ServerNode):
                 try:
                     del self.data[key]
                 except FileNotFoundError:
-                    logger.error("Tried to delete %s but no file found", exc_info=True)
+                    logging.error("Tried to delete %s but no file found", exc_info=True)
                 del self.nbytes[key]
                 del self.types[key]
             if key in self.actors and key not in self.dep_state:
@@ -2150,7 +2150,7 @@ class Worker(ServerNode):
         except CommClosedError:
             pass
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -2191,7 +2191,7 @@ class Worker(ServerNode):
             if report and state == "memory":
                 self.batched_stream.send({"op": "release-worker-data", "keys": [dep]})
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -2220,7 +2220,7 @@ class Worker(ServerNode):
                 if key in self.durations:
                     del self.durations[key]
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -2247,7 +2247,7 @@ class Worker(ServerNode):
         kwargs = kwargs or {}
         future = executor.submit(function, *args, **kwargs)
         pc = PeriodicCallback(
-            lambda: logger.debug("future state: %s - %s", key, future._state), 1000
+            lambda: logging.debug("future state: %s - %s", key, future._state), 1000
         )
         pc.start()
         try:
@@ -2285,7 +2285,7 @@ class Worker(ServerNode):
             else:
                 self.plugins[name] = plugin
 
-                logger.info("Starting Worker plugin %s" % name)
+                logging.info("Starting Worker plugin %s" % name)
                 try:
                     result = plugin.setup(worker=self)
                     if isinstance(result, gen.Future):
@@ -2359,7 +2359,7 @@ class Worker(ServerNode):
                 if self.task_state.get(key) in READY:
                     self.transition(key, "executing")
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -2398,7 +2398,7 @@ class Worker(ServerNode):
                 if self.digests is not None:
                     self.digests["disk-load-duration"].add(stop - start)
 
-            logger.debug(
+            logging.debug(
                 "Execute key: %s worker: %s", key, self.address
             )  # TODO: comment out?
             try:
@@ -2442,7 +2442,7 @@ class Worker(ServerNode):
                 else:
                     self.exceptions[key] = result["exception"]
                     self.tracebacks[key] = result["traceback"]
-                    logger.warning(
+                    logging.warning(
                         " Compute Failed\n"
                         "Function:  %s\n"
                         "args:      %s\n"
@@ -2455,7 +2455,7 @@ class Worker(ServerNode):
                     )
                     self.transition(key, "error")
 
-            logger.debug("Send compute response to scheduler: %s, %s", key, result)
+            logging.debug("Send compute response to scheduler: %s, %s", key, result)
 
             if self.validate:
                 assert key not in self.executing
@@ -2465,9 +2465,9 @@ class Worker(ServerNode):
             self.ensure_communicating()
         except Exception as e:
             if executor_error is e:
-                logger.error("Thread Pool Executor error: %s", e)
+                logging.error("Thread Pool Executor error: %s", e)
             else:
-                logger.exception(e)
+                logging.exception(e)
                 if LOG_PDB:
                     import pdb
 
@@ -2503,7 +2503,7 @@ class Worker(ServerNode):
             # Try to free some memory while in paused state
             self._throttled_gc.collect()
             if not self.paused:
-                logger.warning(
+                logging.warning(
                     "Worker is at %d%% memory usage. Pausing worker.  "
                     "Process memory: %s -- Worker memory limit: %s",
                     int(frac * 100),
@@ -2514,7 +2514,7 @@ class Worker(ServerNode):
                 )
                 self.paused = True
         elif self.paused:
-            logger.warning(
+            logging.warning(
                 "Worker is at %d%% memory usage. Resuming worker. "
                 "Process memory: %s -- Worker memory limit: %s",
                 int(frac * 100),
@@ -2533,7 +2533,7 @@ class Worker(ServerNode):
             need = memory - target
             while memory > target:
                 if not self.data.fast:
-                    logger.warning(
+                    logging.warning(
                         "Memory use is high but worker has no data "
                         "to store to disk.  Perhaps some other process "
                         "is leaking memory?  Process memory: %s -- "
@@ -2557,7 +2557,7 @@ class Worker(ServerNode):
                     self._throttled_gc.collect()
                     memory = proc.memory_info().rss
             if count:
-                logger.debug(
+                logging.debug(
                     "Moved %d pieces of data data and %s to disk",
                     count,
                     format_bytes(total),
@@ -2728,7 +2728,7 @@ class Worker(ServerNode):
             elif state == "executing":
                 self.validate_key_executing(key)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -2767,7 +2767,7 @@ class Worker(ServerNode):
             else:
                 raise ValueError("Unknown dependent state", state)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -2808,7 +2808,7 @@ class Worker(ServerNode):
                     assert key in self.data or key in self.actors
 
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -3401,7 +3401,7 @@ def run(server, comm, function, args=(), kwargs={}, is_coro=None, wait=True):
                 result = None
 
     except Exception as e:
-        logger.warning(
+        logging.warning(
             " Run Failed\n" "Function: %s\n" "args:     %s\n" "kwargs:   %s\n",
             str(funcname(function))[:1000],
             convert_args_to_str(args, max_len=1000),

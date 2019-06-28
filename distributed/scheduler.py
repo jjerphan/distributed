@@ -641,7 +641,7 @@ class TaskState(object):
                 assert isinstance(ts, TaskState), (repr(ts), self.dependents)
             validate_task_state(self)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -891,7 +891,7 @@ class Scheduler(ServerNode):
             try:
                 from distributed.dashboard import BokehScheduler
             except ImportError:
-                logger.debug("To start diagnostics web server please install Bokeh")
+                logging.debug("To start diagnostics web server please install Bokeh")
             else:
                 self.service_specs[("dashboard", dashboard_address)] = (
                     BokehScheduler,
@@ -1362,8 +1362,8 @@ class Scheduler(ServerNode):
         self._deque_handler.setFormatter(
             logging.Formatter(dask.config.get("distributed.admin.log-format"))
         )
-        logger.addHandler(self._deque_handler)
-        finalize(self, logger.removeHandler, self._deque_handler)
+        logging.addHandler(self._deque_handler)
+        finalize(self, logging.removeHandler, self._deque_handler)
 
 
     ###########
@@ -1385,7 +1385,7 @@ class Scheduler(ServerNode):
         address = normalize_address(address)
         host = get_address_host(address)
         if address not in self.workers:
-            logger.info("Received heartbeat from removed worker: %s", address)
+            logging.info("Received heartbeat from removed worker: %s", address)
             return
 
         local_now = time()
@@ -1512,7 +1512,7 @@ class Scheduler(ServerNode):
                 try:
                     plugin.add_worker(scheduler=self, worker=address)
                 except Exception as e:
-                    logger.exception(e)
+                    logging.exception(e)
 
             if nbytes:
                 for key in nbytes:
@@ -1782,7 +1782,7 @@ class Scheduler(ServerNode):
                     resources=resources,
                 )
             except Exception as e:
-                logger.exception(e)
+                logging.exception(e)
 
         self.transitions(recommendations)
 
@@ -1798,7 +1798,7 @@ class Scheduler(ServerNode):
 
     def stimulus_task_finished(self, key=None, worker=None, **kwargs):
         """ Mark that a task has finished execution on a particular worker """
-        logger.debug("Stimulus task finished %s, %s", key, worker)
+        logging.debug("Stimulus task finished %s, %s", key, worker)
 
         ts = self.tasks.get(key)
         if ts is None:
@@ -1811,7 +1811,7 @@ class Scheduler(ServerNode):
             if ts.state == "memory":
                 assert ws in ts.who_has
         else:
-            logger.debug(
+            logging.debug(
                 "Received already computed task, worker: %s, state: %s"
                 ", key: %s, who_has: %s",
                 worker,
@@ -1829,7 +1829,7 @@ class Scheduler(ServerNode):
         self, key=None, worker=None, exception=None, traceback=None, **kwargs
     ):
         """ Mark that a task has erred on a particular worker """
-        logger.debug("Stimulus task erred %s, %s", key, worker)
+        logging.debug("Stimulus task erred %s, %s", key, worker)
 
         ts = self.tasks.get(key)
         if ts is None:
@@ -1860,7 +1860,7 @@ class Scheduler(ServerNode):
     ):
         """ Mark that certain keys have gone missing.  Recover. """
         with log_errors():
-            logger.debug("Stimulus missing data %s, %s", key, worker)
+            logging.debug("Stimulus missing data %s, %s", key, worker)
 
             ts = self.tasks.get(key)
             if ts is None or ts.state == "memory":
@@ -1994,7 +1994,7 @@ class Scheduler(ServerNode):
                 try:
                     plugin.remove_worker(scheduler=self, worker=address)
                 except Exception as e:
-                    logger.exception(e)
+                    logging.exception(e)
 
             if not self.workers:
                 logging.info("Lost all workers")
@@ -2009,7 +2009,7 @@ class Scheduler(ServerNode):
                 dask.config.get("distributed.scheduler.events-cleanup-delay")
             )
             self.loop.call_later(cleanup_delay, remove_worker_from_events)
-            logger.debug("Removed worker %s", address)
+            logging.debug("Removed worker %s", address)
 
         return "OK"
 
@@ -2065,7 +2065,7 @@ class Scheduler(ServerNode):
 
     def client_releases_keys(self, keys=None, client=None):
         """ Remove keys from client desired list """
-        logger.debug("Client %s releases keys: %s", client, keys)
+        logging.debug("Client %s releases keys: %s", client, keys)
         cs = self.clients[client]
         tasks2 = set()
         for key in list(keys):
@@ -2157,19 +2157,19 @@ class Scheduler(ServerNode):
             if ts is None:
                 ts = self.tasks.get(key)
             if ts is None:
-                logger.debug("Key lost: %s", key)
+                logging.debug("Key lost: %s", key)
             else:
                 ts.validate()
                 try:
                     func = getattr(self, "validate_" + ts.state.replace("-", "_"))
                 except AttributeError:
-                    logger.error(
+                    logging.error(
                         "self.validate_%s not found", ts.state.replace("-", "_")
                     )
                 else:
                     func(key)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -2237,7 +2237,7 @@ class Scheduler(ServerNode):
                 comm.send(msg)
             except CommClosedError:
                 if self.status == "running":
-                    logger.critical("Tried writing to closed comm: %s", msg)
+                    logging.critical("Tried writing to closed comm: %s", msg)
             except KeyError:
                 pass
 
@@ -2256,10 +2256,10 @@ class Scheduler(ServerNode):
         for c in comms:
             try:
                 c.send(msg)
-                # logger.debug("Scheduler sends message to client %s", msg)
+                # logging.debug("Scheduler sends message to client %s", msg)
             except CommClosedError:
                 if self.status == "running":
-                    logger.critical("Tried writing to closed comm: %s", msg)
+                    logging.critical("Tried writing to closed comm: %s", msg)
 
     @gen.coroutine
     def add_client(self, comm, client=None):
@@ -2284,7 +2284,7 @@ class Scheduler(ServerNode):
                 yield self.handle_stream(comm=comm, extra={"client": client})
             finally:
                 self.remove_client(client=client)
-                logger.debug("Finished handling client %s", client)
+                logging.debug("Finished handling client %s", client)
         finally:
             if not comm.closed():
                 self.client_comms[client].send({"op": "stream-closed"})
@@ -2362,7 +2362,7 @@ class Scheduler(ServerNode):
 
             self.worker_send(worker, msg)
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -2370,7 +2370,7 @@ class Scheduler(ServerNode):
             raise
 
     def handle_uncaught_error(self, **msg):
-        logger.exception(clean_exception(**msg)[1])
+        logging.exception(clean_exception(**msg)[1])
 
     def handle_task_finished(self, key=None, worker=None, **msg):
         caller_name = inspect.stack()[1][3]
@@ -2402,7 +2402,7 @@ class Scheduler(ServerNode):
     def handle_missing_data(self, key=None, errant_worker=None, **kwargs):
         caller_name = inspect.stack()[1][3]
         logging.info("Scheduler.handle_missing_data called from %s" % caller_name)
-        logger.debug("handle missing data key=%s worker=%s", key, errant_worker)
+        logging.debug("handle missing data key=%s worker=%s", key, errant_worker)
         self.log.append(("missing", key, errant_worker))
 
         ts = self.tasks.get(key)
@@ -2452,7 +2452,7 @@ class Scheduler(ServerNode):
 
         ws = ts.processing_on
         if ws is None:
-            logger.debug(
+            logging.debug(
                 "Received long-running signal from duplicate task. " "Ignoring."
             )
             return
@@ -2611,7 +2611,7 @@ class Scheduler(ServerNode):
                 (self.tasks[key].state if key in self.tasks else None)
                 for key in missing_keys
             ]
-            logger.debug(
+            logging.debug(
                 "Couldn't gather keys %s state: %s workers: %s",
                 missing_keys,
                 missing_states,
@@ -2625,7 +2625,7 @@ class Scheduler(ServerNode):
                     if not workers:
                         continue
                     ts = self.tasks[key]
-                    logger.exception(
+                    logging.exception(
                         "Workers don't have promised key: %s, %s",
                         str(workers),
                         str(key),
@@ -2681,9 +2681,9 @@ class Scheduler(ServerNode):
                 try:
                     plugin.restart(self)
                 except Exception as e:
-                    logger.exception(e)
+                    logging.exception(e)
 
-            logger.debug("Send kill signal to nannies: %s", nannies)
+            logging.debug("Send kill signal to nannies: %s", nannies)
 
             nannies = [
                 rpc(nanny_address, connection_args=self.connection_args)
@@ -2702,11 +2702,11 @@ class Scheduler(ServerNode):
                 )
                 resps = yield gen.with_timeout(timedelta(seconds=timeout), resps)
                 if not all(resp == "OK" for resp in resps):
-                    logger.error(
+                    logging.error(
                         "Not all workers responded positively: %s", resps, exc_info=True
                     )
             except gen.TimeoutError:
-                logger.error(
+                logging.error(
                     "Nannies didn't report back restarted within "
                     "timeout.  Continuuing with restart process"
                 )
@@ -3000,7 +3000,7 @@ class Scheduler(ServerNode):
                 if v["status"] == "OK":
                     self.add_keys(worker=w, keys=list(gathers[w]))
                 else:
-                    logger.warning("Communication failed during replication: %s", v)
+                    logging.warning("Communication failed during replication: %s", v)
 
                 self.log_event(w, {"action": "replicate-add", "keys": gathers[w]})
 
@@ -3253,7 +3253,7 @@ class Scheduler(ServerNode):
             who_has = {
                 k: [self.coerce_address(vv) for vv in v] for k, v in who_has.items()
             }
-            logger.debug("Update data %s", who_has)
+            logging.debug("Update data %s", who_has)
 
             for key, workers in who_has.items():
                 ts = self.tasks.get(key)
@@ -3628,7 +3628,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -3672,7 +3672,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -3754,13 +3754,13 @@ class Scheduler(ServerNode):
             if ts.actor:
                 ws.actors.add(ts)
 
-            # logger.debug("Send job to worker: %s, %s", worker, key)
+            # logging.debug("Send job to worker: %s, %s", worker, key)
 
             self.send_task_to_worker(worker, key)
 
             return {}
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -3795,7 +3795,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -3891,7 +3891,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -3949,7 +3949,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -3990,7 +3990,7 @@ class Scheduler(ServerNode):
             # TODO: waiting data?
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -4024,7 +4024,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -4060,7 +4060,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -4104,7 +4104,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -4173,7 +4173,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -4199,7 +4199,7 @@ class Scheduler(ServerNode):
 
             return {}
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -4286,7 +4286,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -4322,7 +4322,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception(e)
+            logging.exception(e)
             if LOG_PDB:
                 import pdb
 
@@ -4380,7 +4380,7 @@ class Scheduler(ServerNode):
             finish2 = ts.state
             self.transition_log.append((key, start, finish2, recommendations, time()))
             if self.validate:
-                logger.debug(
+                logging.debug(
                     "Transitioned %r %s->%s (actual: %s).  Consequence: %s",
                     key,
                     start,
@@ -4407,7 +4407,7 @@ class Scheduler(ServerNode):
 
             return recommendations
         except Exception as e:
-            logger.exception("Error transitioning %r from %r to %r", key, start, finish)
+            logging.exception("Error transitioning %r from %r to %r", key, start, finish)
             if LOG_PDB:
                 import pdb
 
@@ -4817,7 +4817,7 @@ class Scheduler(ServerNode):
             )
 
         except Exception:
-            logger.error("Error in reevaluate occupancy", exc_info=True)
+            logging.error("Error in reevaluate occupancy", exc_info=True)
             raise
 
     def _reevaluate_occupancy_worker(self, ws):
@@ -4847,7 +4847,7 @@ class Scheduler(ServerNode):
         now = time()
         for ws in self.workers.values():
             if ws.last_seen < now - self.worker_ttl:
-                logger.warning(
+                logging.warning(
                     "Worker failed to heartbeat within %s seconds. " "Closing: %s",
                     self.worker_ttl,
                     ws,

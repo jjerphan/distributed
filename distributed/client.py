@@ -295,7 +295,7 @@ class Future(WrappedKey):
             try:
                 fn(fut)
             except BaseException:
-                logger.exception("Error in callback %s of %s:", fn, fut)
+                logging.exception("Error in callback %s of %s:", fn, fut)
 
         self.client.loop.add_callback(
             done_callback, self, partial(cls._cb_executor.submit, execute_callback)
@@ -756,7 +756,7 @@ class Client(Node):
 
     def sync(self, func, *args, **kwargs):
         caller_name = inspect.stack()[1][3]
-        logger.info("Client.sync called from %s" % caller_name)
+        logging.info("Client.sync called from %s" % caller_name)
         asynchronous = kwargs.pop("asynchronous", None)
         if (
             asynchronous
@@ -1013,7 +1013,7 @@ class Client(Node):
                     yield gen.sleep(0.1)
                     timeout = deadline - self.loop.time()
             else:
-                logger.error(
+                logging.error(
                     "Failed to reconnect to scheduler after %.2f "
                     "seconds, closing client",
                     self._timeout,
@@ -1070,7 +1070,7 @@ class Client(Node):
             self._send_to_scheduler(msg)
         del self._pending_msg_buffer[:]
 
-        logger.debug("Started scheduling coroutines. Synchronized")
+        logging.debug("Started scheduling coroutines. Synchronized")
 
     @gen.coroutine
     def _update_scheduler_info(self):
@@ -1081,7 +1081,7 @@ class Client(Node):
         try:
             self._scheduler_identity = yield self.scheduler.identity()
         except EnvironmentError:
-            logger.debug("Not able to query scheduler for identity")
+            logging.debug("Not able to query scheduler for identity")
 
     @gen.coroutine
     def _wait_for_workers(self, n_workers=0):
@@ -1131,7 +1131,7 @@ class Client(Node):
 
     def _release_key(self, key):
         """ Release key from distributed memory """
-        logger.debug("Release key %s", key)
+        logging.debug("Release key %s", key)
         st = self.futures.pop(key, None)
         if st is not None:
             st.cancel()
@@ -1166,7 +1166,7 @@ class Client(Node):
 
                     breakout = False
                     for msg in msgs:
-                        logger.debug("Client receives message %s", msg)
+                        logging.debug("Client receives message %s", msg)
 
                         if "status" in msg and "error" in msg["status"]:
                             six.reraise(*clean_exception(**msg))
@@ -1181,7 +1181,7 @@ class Client(Node):
                             handler = self._stream_handlers[op]
                             handler(**msg)
                         except Exception as e:
-                            logger.exception(e)
+                            logging.exception(e)
                     if breakout:
                         break
             except CancelledError:
@@ -1230,8 +1230,8 @@ class Client(Node):
             self._restart_event.set()
 
     def _handle_error(self, exception=None):
-        logger.warning("Scheduler exception:")
-        logger.exception(exception)
+        logging.warning("Scheduler exception:")
+        logging.exception(exception)
 
     @gen.coroutine
     def _close(self, fast=False):
@@ -1479,7 +1479,7 @@ class Client(Node):
             actors=actor,
         )
 
-        logger.debug("Submit %s(...), %s", funcname(func), key)
+        logging.debug("Submit %s(...), %s", funcname(func), key)
 
         return futures[skey]
 
@@ -1633,7 +1633,7 @@ class Client(Node):
             fifo_timeout=fifo_timeout,
             actors=actor,
         )
-        logger.debug("map(%s, ...)", funcname(func))
+        logging.debug("map(%s, ...)", funcname(func))
 
         return [futures[tokey(k)] for k in keys]
 
@@ -1666,7 +1666,7 @@ class Client(Node):
                 raise AllExit()
 
         while True:
-            logger.debug("Waiting on futures to clear before gather")
+            logging.debug("Waiting on futures to clear before gather")
 
             with ignoring(AllExit):
                 yield All(
@@ -1719,7 +1719,7 @@ class Client(Node):
                 response = yield future
 
             if response["status"] == "error":
-                log = logger.warning if errors == "raise" else logger.debug
+                log = logging.warning if errors == "raise" else logging.debug
                 log(
                     "Couldn't gather %s keys, rescheduling %s",
                     len(response["keys"]),
@@ -2889,7 +2889,7 @@ class Client(Node):
         try:
             yield self._restart_event.wait(self.loop.time() + timeout)
         except gen.TimeoutError:
-            logger.error("Restart timed out after %f seconds", timeout)
+            logging.error("Restart timed out after %f seconds", timeout)
             pass
         self.generation += 1
         with self._refcount_lock:
