@@ -416,7 +416,7 @@ class Worker(ServerNode):
         )
         profile_cycle_interval = parse_timedelta(profile_cycle_interval, default="ms")
 
-        self._setup_logging(logger)
+        self._setup_logging()
 
         if scheduler_file:
             cfg = json_load_robust(scheduler_file)
