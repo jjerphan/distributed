@@ -852,7 +852,6 @@ class Scheduler(ServerNode):
     ):
         caller_name = inspect.stack()[1][3]
         logging.info("Scheduler.__init__ called from %s" % caller_name)
-        self._setup_logging(logger)
 
         # Attributes
         if allowed_failures is None:
@@ -1352,19 +1351,6 @@ class Scheduler(ServerNode):
 
             self.worker_send(worker, {"op": "close", "report": False})
             self.remove_worker(address=worker, safe=safe)
-
-    def _setup_logging(self):
-        caller_name = inspect.stack()[1][3]
-        logging.info("Scheduler._setup_logging called from %s" % caller_name)
-        self._deque_handler = DequeHandler(
-            n=dask.config.get("distributed.admin.log-length")
-        )
-        self._deque_handler.setFormatter(
-            logging.Formatter(dask.config.get("distributed.admin.log-format"))
-        )
-        logging.addHandler(self._deque_handler)
-        finalize(self, logging.removeHandler, self._deque_handler)
-
 
     ###########
     # Stimuli #

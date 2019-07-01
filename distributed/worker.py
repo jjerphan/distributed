@@ -22,6 +22,8 @@ import psutil
 from dask.compatibility import apply
 from dask.core import istask
 
+from distributed.utils import DequeHandler
+
 try:
     from cytoolz import pluck, partial, merge, first
 except ImportError:
@@ -416,8 +418,6 @@ class Worker(ServerNode):
         )
         profile_cycle_interval = parse_timedelta(profile_cycle_interval, default="ms")
 
-        self._setup_logging()
-
         if scheduler_file:
             cfg = json_load_robust(scheduler_file)
             scheduler_addr = cfg["address"]
@@ -674,17 +674,6 @@ class Worker(ServerNode):
                 len(self.waiting_for_data),
             )
         )
-
-    def _setup_logging(self):
-        logging.info("Worker._setup_logging called")
-        self._deque_handler = DequeHandler(
-            n=dask.config.get("distributed.admin.log-length")
-        )
-        self._deque_handler.setFormatter(
-            logging.Formatter(dask.config.get("distributed.admin.log-format"))
-        )
-        logging.addHandler(self._deque_handler)
-        finalize(self, logging.removeHandler, self._deque_handler)
 
     @property
     def worker_address(self):
